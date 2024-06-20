@@ -66,22 +66,26 @@
     protected bool notificationSidebarExpanded = false;
     protected static List<InventoryUpdatesListItem> notifications = [];
 
+    private static DotNetObjectReference<MainLayout> objRef;
+
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         await WebSocketService.ConnectAsync("wss://localhost:7291/ws/notifications");
+        objRef = DotNetObjectReference.Create(this);
     }
 
-    public async Task OnReceiveMessage(string message)
+    [JSInvokable]
+    public static void OnReceiveMessage(string message)
     {
-        Console.WriteLine(message);
-
+        Console.WriteLine("Received message: " + message);
         var inventoryUpdates = JsonSerializer.Deserialize<UpdateInventoryNotificationReceiver>(message);
         if (inventoryUpdates != null && inventoryUpdates.Type == 0)
         {
-            notifications = inventoryUpdates.InventroyUpdate;
+            Console.WriteLine("Received message: " + inventoryUpdates.Type + " " + inventoryUpdates.InventroyUpdate.Count );
+        notifications = inventoryUpdates.InventroyUpdate;
         }
-        await InvokeAsync(StateHasChanged);
+        objRef.Value.StateHasChanged();
     }
 
     protected async Task TogglePopup()

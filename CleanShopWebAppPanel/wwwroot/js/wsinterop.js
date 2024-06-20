@@ -7,7 +7,9 @@
 
     socket.onmessage = function (event) {
         console.log('Received message:', event.data);
-        DotNet.invokeMethodAsync('CleanShopWebAppPanel', 'OnReceiveMessage', event.data);
+        window.getMessage = (dotnetHelper) => {
+            return dotnetHelper.invokeMethod('CleanShopWebAppPanel', 'GetReceivedMessage', event.data);
+        }
     };
 
     socket.onclose = function (event) {
