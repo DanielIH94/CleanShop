@@ -39,7 +39,7 @@ _Below is an example of how you can instruct your audience on installing and set
    ```sh
    git clone https://github.com/DanielIH94/CleanShop.git
    ```
-3. Abrir la solucion CleanShop.sln que se encuentra dentro del proyecto en Visual Studio 2022.
+3. Abrir la solucion CleanShop.sln en Visual Studio 2022.
 
 ### Ejemplo de consulta servicio web
 #### 1. Obtener producto por ID
