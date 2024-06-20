@@ -1,0 +1,44 @@
+﻿@page "/bestsellers"
+
+@using CleanShopWebAppPanel.Models.CleanShopOData
+@using CleanShopWebAppPanel.Services.CleanShopODataClientService
+
+@inject CleanShopODataClientService ODataService
+
+
+<RadzenStack>
+    <RadzenStack Gap="0">
+        <RadzenText TextStyle=TextStyle.H3>Árticulos más vendidos</RadzenText>
+    </RadzenStack>
+    <RadzenRow RowGap="1.2rem" Gap="1.2rem">
+        @foreach(var bestSeller in BestSellersProducts)
+        {
+            <RadzenColumn Size="4">
+                <RadzenCard>
+                    <RadzenImage Class="w-100 mb-2" Path=@AppConstantsHelper.AppProductImagePlaceholder/>
+                    <RadzenText Text=@bestSeller.Producto.Titulo TextStyle="TextStyle.H5" Style="text-overflow:ellipsis; white-space: nowrap; overflow: hidden;" />
+                    <RadzenText Text=@($"Cantidad vendida: {bestSeller.CantidadVendida} unidades")/>
+                </RadzenCard>
+            </RadzenColumn>
+        }
+    </RadzenRow>
+</RadzenStack>
+
+@code {
+    protected bool IsLoading;
+    protected IEnumerable<Venta> BestSellersProducts { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadBestSellers();
+    }
+
+    protected async Task LoadBestSellers()
+    {
+        IsLoading = true;
+        var bestSellers = await ODataService.GetBestSellingProductsAsync(3);
+        BestSellersProducts = bestSellers;
+        IsLoading = false;
+    }
+}

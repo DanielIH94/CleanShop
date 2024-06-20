@@ -1,0 +1,86 @@
+﻿@page "/shop"
+
+@using CleanShopWebApp.Models.CleanShopOData
+@using CleanShopWebApp.Services.CleanShopODataClientService
+@using CleanShopWebApp.Services.ShoppingCartService
+
+@inject ShoppingCartService ShoppingCart
+@inject CleanShopODataClientService CleanShopODataClient
+@inject DialogService DialogService
+
+<RadzenStack>
+    <RadzenText TextStyle="TextStyle.H3">Tienda</RadzenText>
+    @if (IsLoading)
+    {
+        <RadzenProgressBarCircular Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    }
+    else
+    {
+        <RadzenRow Gap="1.5rem" RowGap="1.5rem">
+            @foreach (var product in Products)
+            {
+                <RadzenColumn Size="3">
+                    <RadzenCard Variant=Variant.Filled>
+                        <RadzenStack Gap="0.7rem">
+                            <RadzenImage Src=@AppConstants.AppProductImagePlaceholder />
+                            <RadzenStack Gap="0.2rem">
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch">
+                                    <RadzenText TextStyle="TextStyle.H5" TextAlign="TextAlign.Start"
+                                                Style="text-overflow:ellipsis; white-space: nowrap; overflow: hidden;">
+                                        @product.Titulo
+                                    </RadzenText>
+                                    <RadzenButton Icon="info"
+                                                  Variant="Variant.Text"
+                                                  Click=@(() => OpenProductDetailsDialog(product)) />
+                                </RadzenStack>
+                                <RadzenStack Orientation="Orientation.Horizontal">
+                                    <RadzenText TextStyle="TextStyle.DisplayH4"
+                                                Style="color: var(--rz-secondary); font-weight:200;">
+                                        $@product.PrecioUnitario
+                                    </RadzenText>
+                                    <RadzenText Style="color: var(--rz-secondary);">00</RadzenText>
+                                </RadzenStack>
+                            </RadzenStack>
+                            <RadzenButton Icon="add_shopping_cart"
+                                          Text=@(!ShoppingCart.ContainsItem(product.IdProductos) ? "Agregar" : "Agregar más")
+                                          ButtonStyle=@(!ShoppingCart.ContainsItem(product.IdProductos) ? ButtonStyle.Primary : ButtonStyle.Secondary)
+                                          class="mt-3"
+                                          Click=@(() => ShoppingCart.AddItem(product)) />
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenColumn>
+            }
+        </RadzenRow>
+    }
+</RadzenStack>
+
+@code {
+    protected RadzenDialog radzenDialog;
+    protected RadzenButton button;
+    protected bool IsLoading { get; set; }
+
+    protected IEnumerable<Producto> Products { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        IsLoading = true;
+        Products = await CleanShopODataClient.GetProductsAsync();
+        IsLoading = false;
+    }
+
+    protected async Task OpenProductDetailsDialog(Producto producto)
+    {
+        await DialogService.OpenAsync<ProductDetail>(
+            $"{producto.Titulo}",
+            new Dictionary<string, object>() { { "Id", producto.IdProductos } },
+            new DialogOptions()
+                {
+                    Width = "800px",
+                    Resizable = true,
+                    Draggable = true
+                }
+        );
+    }
+}
+

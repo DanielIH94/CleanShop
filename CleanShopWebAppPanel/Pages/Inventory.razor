@@ -1,0 +1,45 @@
+﻿@page "/inventory"
+
+@using CleanShopWebAppPanel.Models.CleanShopOData
+@using CleanShopWebAppPanel.Services.CleanShopODataClientService
+@using System.Globalization
+
+@inject CleanShopODataClientService ODataService
+
+
+<RadzenStack>
+    <RadzenStack Gap="0">
+        <RadzenText TextStyle=TextStyle.H3>Inventario</RadzenText>
+    </RadzenStack>
+    <RadzenDataGrid TItem="Producto"
+                    IsLoading=@IsLoading
+                    Data=@Products
+                    AllowPaging="true"
+                    AllowSorting="true"
+                    AllowFiltering="true"
+                    PageSize="10">
+        <Columns>
+            <RadzenDataGridColumn Property="IdProductos" Title="Id" />
+            <RadzenDataGridColumn Property="Titulo" Title="Nombre" />
+            <RadzenDataGridColumn Property="Existencias" Title="Existencias" />
+        </Columns>
+    </RadzenDataGrid>
+</RadzenStack>
+
+@code {
+    protected bool IsLoading;
+    protected IEnumerable<Producto> Products = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await GetProducts();
+    }
+
+    protected async Task GetProducts()
+    {
+        IsLoading = true;
+        Products = await ODataService.GetProductsAsync();
+        IsLoading = false;
+    }
+}

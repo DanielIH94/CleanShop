@@ -1,0 +1,52 @@
+﻿@page "/globalsales"
+
+@using CleanShopWebAppPanel.Services.CleanShopODataClientService
+@using System.Globalization
+
+@inject CleanShopODataClientService ODataService
+
+
+<RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 AlignItems="AlignItems.Center"
+                 Gap="0"
+                 Class="w-100 justify-content-between">
+        <RadzenText TextStyle=TextStyle.H3>Ventas globales</RadzenText>
+        <RadzenText>
+            @Today
+        </RadzenText>
+    </RadzenStack>
+    <RadzenCard>
+        @if (!IsLoading)
+        {
+            <RadzenText Text="Hasta la fecha actual, las ventas globales han alcanzado:" />
+            <RadzenText TextStyle="TextStyle.DisplayH1">
+                @GlobalSalesTotal?.ToString("C2", CultureInfo.CreateSpecificCulture("es-MX"))
+            </RadzenText>
+        }
+        else
+        {
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+        }
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    protected bool IsLoading;
+    protected string Today = DateTime.Now.ToString("dd/MM/yyyy hh:mm tt");
+    protected decimal? GlobalSalesTotal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await GetGlobalSales();
+    }
+
+    protected async Task GetGlobalSales()
+    {
+        IsLoading = true;
+        var sales = await ODataService.GetSalesProductAsync();
+        GlobalSalesTotal = sales.Sum(x => (x.CantidadVendida * x.Producto.PrecioUnitario));
+        IsLoading = false;
+    }
+}

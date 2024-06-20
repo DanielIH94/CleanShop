@@ -1,0 +1,88 @@
+﻿@page "/detail/{Id}"
+
+@using CleanShopWebApp.Models.CleanShopOData
+@using CleanShopWebApp.Services.CleanShopODataClientService
+
+@inject CleanShopODataClientService CleanShopODataClient
+
+@if (IsLoading)
+{
+    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+
+    @if (Product != null)
+    {
+        <RadzenCard Variant=Variant.Filled Style="width:100%;">
+            <RadzenStack>
+                <RadzenRow Gap="1.5rem" RowGap="1.5rem">
+                    <RadzenColumn Size="3">
+                        <RadzenText TextStyle="TextStyle.H5" Class="fw-bold">Id producto</RadzenText>
+                    </RadzenColumn>
+                    <RadzenColumn Size="3">
+                        <RadzenText>@Product.IdProductos</RadzenText>
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow Gap="1.5rem" RowGap="1.5rem">
+                    <RadzenColumn Size="3">
+                        <RadzenText TextStyle="TextStyle.H5" Class="fw-bold">Título</RadzenText>
+                    </RadzenColumn>
+                    <RadzenColumn Size="3">
+                        <RadzenText>@Product.Titulo</RadzenText>
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow Gap="1.5rem" RowGap="1.5rem">
+                    <RadzenColumn Size="3">
+                        <RadzenText TextStyle="TextStyle.H5" Class="fw-bold">Descripción</RadzenText>
+                    </RadzenColumn>
+                    <RadzenColumn Size="3">
+                        <RadzenText>@Product.Descripcion</RadzenText>
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow Gap="1.5rem" RowGap="1.5rem">
+                    <RadzenColumn Size="3">
+                        <RadzenText TextStyle="TextStyle.H5" Class="fw-bold">Precio unitario</RadzenText>
+                    </RadzenColumn>
+                    <RadzenColumn Size="3">
+                        <RadzenText>@Product.PrecioUnitario</RadzenText>
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow Gap="1.5rem" RowGap="1.5rem">
+                    <RadzenColumn Size="3">
+                        <RadzenText TextStyle="TextStyle.H5" Class="fw-bold">Existencias</RadzenText>
+                    </RadzenColumn>
+                    <RadzenColumn Size="3">
+                        <RadzenText>@Product.Existencias</RadzenText>
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenCard>
+    }
+    else
+    {
+        <RadzenText TextStyle="TextStyle.DisplayH2">Producto no encontrado</RadzenText>
+    }
+}
+
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    protected Producto? Product;
+    protected bool IsLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadProduct();
+    }
+
+    protected async Task LoadProduct()
+    {
+        IsLoading = true;
+        Product = await CleanShopODataClient.GetProductByIdAsync(Id);
+        IsLoading = false;
+    }
+}

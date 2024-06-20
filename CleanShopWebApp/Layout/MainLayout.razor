@@ -1,0 +1,39 @@
+﻿@using CleanShopWebApp.Services.WebSocketService
+
+@inherits LayoutComponentBase
+
+@inject WebSocketService WebSocketService
+
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+            <RadzenLabel Text=@AppConstants.AppTitle />
+        </RadzenStack>
+    </RadzenHeader>
+    <RadzenSidebar Responsive="false" Style="width: max-content">
+        <RadzenPanelMenu DisplayStyle="@(sidebarExpanded ? MenuItemDisplayStyle.IconAndText : MenuItemDisplayStyle.Icon)" ShowArrow="false">
+            <RadzenPanelMenuItem Text="Shop" Icon="shopping_bag" Path="shop" />
+            <RadzenPanelMenuItem Text="Cart" Icon="shopping_cart" Path="cart" />
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+    <RadzenBody>
+        <div class="rz-p-4">
+            @Body
+        </div>
+    </RadzenBody>
+    <RadzenFooter>
+        Daniel Ibarra Hernández
+    </RadzenFooter>
+</RadzenLayout>
+<RadzenComponents/>
+
+@code {
+    bool sidebarExpanded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await WebSocketService.ConnectAsync("wss://localhost:7291/ws/notifications");
+    }
+}

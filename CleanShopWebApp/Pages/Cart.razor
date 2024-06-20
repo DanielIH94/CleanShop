@@ -1,0 +1,220 @@
+﻿@page "/cart"
+
+@using CleanShopWebApp.Models
+@using System.Globalization
+@using CleanShopWebApp.Models.CleanShopOData
+@using CleanShopWebApp.Services.CleanShopODataClientService
+@using CleanShopWebApp.Services.ShoppingCartService
+@using CleanShopWebApp.Services.WebSocketService
+@using System.Text.Json
+
+@inject ShoppingCartService ShoppingCart
+@inject DialogService DialogService
+@inject CleanShopODataClientService CleanShopODataClient
+@inject NotificationService NotificationService
+@inject WebSocketService WebSocketService
+
+<RadzenStack>
+    <RadzenStack Gap="0.2rem">
+        <RadzenText TextStyle=TextStyle.H3>Carrito</RadzenText>
+        <RadzenText> Tienes <b>@ShoppingCart.Items.Count</b> productos diferentes en tu carrito.</RadzenText>
+    </RadzenStack>
+    <RadzenRow Orientation=Orientation.Horizontal Gap="3rem" RowGap="1.3rem">
+        <RadzenColumn Size="8">
+            <RadzenDataGrid Data=@ShoppingCart.Items TItem="CartItem" GridLines="DataGridGridLines.None">
+                <Columns>
+                    <RadzenDataGridColumn Title="Product" Width="24rem">
+                        <Template Context="context">
+                            <RadzenStack Gap="1rem" Orientation=Orientation.Horizontal>
+                                <RadzenImage Src=@AppConstants.AppProductImagePlaceholder Style="width: 10rem;" />
+                                <RadzenStack Gap="0.5rem">
+                                    <RadzenText TextStyle=TextStyle.H5>
+                                        @context.Product.Titulo
+                                    </RadzenText>
+                                    <RadzenText>
+                                        @context.Product.Descripcion
+                                    </RadzenText>
+                                </RadzenStack>
+                            </RadzenStack>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="PrecioUnitario" Width="5rem">
+                        <Template Context="context">
+                            <RadzenText Text=@context.Product.PrecioUnitario.ToString("C2", CultureInfo.CreateSpecificCulture("es-MX")) />
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Title="Quantity" Width="9rem">
+                        <Template Context="context">
+                            <RadzenStack Gap="1rem" Orientation=Orientation.Horizontal Class="align-items-center">
+                                <RadzenButton Icon="remove"
+                                              ButtonStyle=ButtonStyle.Secondary
+                                              Click=@(() => RemoveItem(context.Product)) />
+                                <RadzenText Text=@context.Quantity.ToString() />
+                                <RadzenButton Icon="add"
+                                              ButtonStyle=ButtonStyle.Secondary
+                                              Click=@(()=> AddItem(context.Product)) />
+                            </RadzenStack>
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Property="TotalPrice" Title="Total" Width="5rem" />
+                    <RadzenDataGridColumn Context="context" Width="5rem">
+                        <Template Context="context">
+                            <RadzenButton Icon="delete"
+                                          ButtonStyle=ButtonStyle.Danger
+                                          Click=@(()=> ClearItem(context.Product.IdProductos)) />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+                <EmptyTemplate>
+                    <RadzenText Text=@EmptyMessage />
+                </EmptyTemplate>
+            </RadzenDataGrid>
+        </RadzenColumn>
+        <RadzenColumn Size="4">
+            <RadzenCard>
+                <RadzenStack Gap="1rem">
+                    <RadzenText Class="border-1 border-bottom">Total:</RadzenText>
+                    <RadzenStack Gap="0" Orientation=Orientation.Horizontal>
+                        <RadzenText TextStyle=TextStyle.H4>$@ShoppingCart.TotalPrice </RadzenText>
+                        <RadzenText>00</RadzenText>
+                    </RadzenStack>
+                    <RadzenButton Icon="payment"
+                                  Text=@(!IsBuying ? "Comprar" : "Comprando")
+                                  ButtonStyle=ButtonStyle.Primary
+                                  IsBusy=@IsBuying
+                                  Disabled=@(IsBuying || ShoppingCart.Items.Count == 0)
+                                  Click=@Buy />
+                    <RadzenButton Icon="remove_shopping_cart"
+                                  Text="Vaciar carrito"
+                                  ButtonStyle=ButtonStyle.Secondary
+                                  Disabled=@(IsBuying || ShoppingCart.Items.Count == 0)
+                                  Click=@ClearCar />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenStack>
+
+@code {
+    protected bool IsBuying;
+    protected string EmptyMessage = "No hay productos en tu carrito.";
+
+    protected async void ClearItem(int productId)
+    {
+        Console.WriteLine("ClearItem");
+        var result = await DialogService.Confirm(
+            "¿Estás seguro de que deseas eliminar este producto de tu carrito?",
+            "Eliminar producto",
+            new ConfirmOptions()
+                {
+                    OkButtonText = "Sí",
+                    CancelButtonText = "No",
+                    CloseDialogOnOverlayClick = true
+                }
+        );
+
+        Console.WriteLine(result);
+
+        if (result == true)
+        {
+            ShoppingCart.ClearItem(productId);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected async Task Buy()
+    {
+        var result = await DialogService.Confirm(
+            "¿Estás seguro de que deseas realizar la compra?",
+            "Comprar",
+            new ConfirmOptions()
+                {
+                    OkButtonText = "Sí",
+                    CancelButtonText = "No",
+                    CloseDialogOnOverlayClick = true
+                }
+        );
+
+        if (result == true)
+        {
+            try
+            {
+                IsBuying = true;
+                var sales = ShoppingCart.Items.Select(item => new Venta()
+                    {
+                        IdVentas = item.Product.IdProductos,
+                        Idproductos = item.Product.IdProductos,
+                        CantidadVendida = item.Quantity,
+                        Fecha = DateTime.Now
+                    });
+                await CleanShopODataClient.InsertSalesAsync(sales);
+
+                var taskValuesList = ShoppingCart.Items.Select(async item =>
+                {
+                    var product = await CleanShopODataClient.GetProductByIdAsync(item.Product.IdProductos);
+                    var newQtyInInventory = product.Existencias - (item.Quantity);
+                    return new ODataBatchUpdate{ 
+                        Id = product.IdProductos,
+                        Name = product.Titulo,
+                        NewStock = newQtyInInventory 
+                    };
+                });
+                var valuesList = await Task.WhenAll(taskValuesList);
+                await CleanShopODataClient.UpdateProductStockAsync([..valuesList]);
+
+                await WebSocketService.SendMessageAsync(JsonSerializer.Serialize(
+                    new UpdateInventoryNotificationSender()
+                        {
+                            Type = 0,
+                            InventoryUpdate = [..valuesList],
+                        }
+                ));
+
+                ShoppingCart.ClearCart();
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Notify(new NotificationMessage()
+                    {
+                        Severity = NotificationSeverity.Error,
+                        Summary = "Error",
+                        Detail = "Ocurrió un error al realizar la compra."
+                    }
+                );
+                Console.WriteLine(ex.Message);
+            }
+            finally
+            {
+                IsBuying = false;
+            }
+        }
+    }
+
+    protected void RemoveItem(Producto producto)
+    {
+        ShoppingCart.RemoveItem(producto);
+    }
+
+    protected void AddItem(Producto producto)
+    {
+        ShoppingCart.AddItem(producto);
+    }
+
+    protected async Task ClearCar()
+    {
+        var result = await DialogService.Confirm(
+            "¿Estás seguro de que deseas vaciar tu carrito?",
+            "Vaciar carrito",
+            new ConfirmOptions()
+                {
+                    OkButtonText = "Sí",
+                    CancelButtonText = "No",
+                    CloseDialogOnOverlayClick = true
+                }
+        );
+        if (result == true)
+        {
+            ShoppingCart.ClearCart();
+        }
+    }
+}

@@ -1,0 +1,37 @@
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="CleanShopServer.Models.CleanShopDb" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EntityType Name="Producto">
+        <Key>
+          <PropertyRef Name="IdProductos" />
+        </Key>
+        <Property Name="IdProductos" Type="Edm.Int32" Nullable="false" />
+        <Property Name="Titulo" Type="Edm.String" Nullable="false" />
+        <Property Name="Descripcion" Type="Edm.String" />
+        <Property Name="PrecioUnitario" Type="Edm.Decimal" Nullable="false" Scale="Variable" />
+        <Property Name="Existencias" Type="Edm.Int32" Nullable="false" />
+        <NavigationProperty Name="Ventas" Type="Collection(CleanShopServer.Models.CleanShopDb.Venta)" />
+      </EntityType>
+      <EntityType Name="Venta">
+        <Key>
+          <PropertyRef Name="IdVentas" />
+        </Key>
+        <Property Name="IdVentas" Type="Edm.Int32" Nullable="false" />
+        <Property Name="Idproductos" Type="Edm.Int32" />
+        <Property Name="CantidadVendida" Type="Edm.Int32" />
+        <Property Name="Fecha" Type="Edm.DateTimeOffset" Nullable="false" />
+        <NavigationProperty Name="Producto" Type="CleanShopServer.Models.CleanShopDb.Producto" />
+      </EntityType>
+    </Schema>
+    <Schema Namespace="Default" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EntityContainer Name="Container">
+        <EntitySet Name="Productos" EntityType="CleanShopServer.Models.CleanShopDb.Producto">
+          <NavigationPropertyBinding Path="Ventas" Target="Ventas" />
+        </EntitySet>
+        <EntitySet Name="Ventas" EntityType="CleanShopServer.Models.CleanShopDb.Venta">
+          <NavigationPropertyBinding Path="Producto" Target="Productos" />
+        </EntitySet>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>

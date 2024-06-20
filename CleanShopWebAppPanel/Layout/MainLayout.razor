@@ -1,0 +1,91 @@
+﻿@using CleanShopWebAppPanel.Models
+@using CleanShopWebAppPanel.Services.WebSocketService
+@using Radzen.Blazor.Rendering
+@using System.Text.Json
+
+@inherits LayoutComponentBase
+
+@inject WebSocketService WebSocketService
+
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" class="w-100 justify-content-between">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+                <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+                <RadzenLabel Text=@AppConstantsHelper.AppTitle />
+            </RadzenStack>
+            <RadzenButton @ref=button Variant="Variant.Flat" Click=@TogglePopup>
+                <RadzenIcon Icon="notifications" />
+                @if (@notifications.Count > 0)
+                {
+                    <RadzenBadge Text=@notifications.Count.ToString()
+                                 BadgeStyle="BadgeStyle.Secondary" />
+                }
+            </RadzenButton>
+        </RadzenStack>
+    </RadzenHeader>
+    <RadzenSidebar Responsive="false" Style="width: max-content">
+        <RadzenPanelMenu DisplayStyle="@(sidebarExpanded ? MenuItemDisplayStyle.IconAndText : MenuItemDisplayStyle.Icon)" ShowArrow="false">
+            <RadzenPanelMenuItem Text="Ventas" Icon="incomplete_circle">
+                <RadzenPanelMenuItem Text="Articulo" Icon="category" Path="productsales" />
+                <RadzenPanelMenuItem Text="Globales" Icon="public" Path="globalsales" />
+            </RadzenPanelMenuItem>
+            <RadzenPanelMenuItem Text="+ Vendidos" Icon="ssid_chart" Path="bestSellers" />
+            <RadzenPanelMenuItem Text="Inventario" Icon="inventory" Path="inventory" />
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+    <RadzenBody>
+        <div class="rz-p-4">
+            @Body
+        </div>
+    </RadzenBody>
+    <RadzenFooter>
+        Daniel Ibarra Hernández
+    </RadzenFooter>
+</RadzenLayout>
+<Popup @ref=popup Lazy=true Class="p-0" Style="display:none;position:absolute;width:30rem;">
+    <RadzenCard>
+        @foreach(var notification in notifications)
+        {
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenIcon IconColor="orange" Icon="notifications" />
+                <RadzenStack Gap="0">
+                    <RadzenText class="fw-bold" Text=@($"El producto '{notification.Name}' se está agotando") />
+                    <RadzenText Text=@($"Quedan {notification.NewStock} piezas") />
+                </RadzenStack>
+            </RadzenStack>
+        }
+    </RadzenCard>
+</Popup>
+
+@code {
+    protected RadzenButton button = null!;
+    protected Popup popup = null!;
+
+    protected bool sidebarExpanded = false;
+    protected bool notificationSidebarExpanded = false;
+    protected static List<InventoryUpdatesListItem> notifications = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await WebSocketService.ConnectAsync("wss://localhost:7291/ws/notifications");
+    }
+
+    public async Task OnReceiveMessage(string message)
+    {
+        Console.WriteLine(message);
+
+        var inventoryUpdates = JsonSerializer.Deserialize<UpdateInventoryNotificationReceiver>(message);
+        if (inventoryUpdates != null && inventoryUpdates.Type == 0)
+        {
+            notifications = inventoryUpdates.InventroyUpdate;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected async Task TogglePopup()
+    {
+        await popup.ToggleAsync(button.Element);
+    }
+}

@@ -1,0 +1,74 @@
+﻿@page "/productsales"
+
+@using CleanShopWebAppPanel.Models
+@using CleanShopWebAppPanel.Models.CleanShopOData
+@using CleanShopWebAppPanel.Services.CleanShopODataClientService
+@using System.Globalization
+
+@inject CleanShopODataClientService ODataService
+
+<RadzenStack>
+    <RadzenText TextStyle=TextStyle.H3>Ventas por árticulo</RadzenText>
+    @if (!IsLoading)
+    {
+        <RadzenChart>
+            <RadzenPieSeries Data=@SalesByProduct
+                             Title="Ventas por árticulo"
+                             CategoryProperty="Producto.Titulo"
+                             ValueProperty="Total">
+                <RadzenSeriesDataLabels Visible="true" />
+            </RadzenPieSeries>
+        </RadzenChart>
+    }
+    <RadzenDataGrid TItem="SalesByProductGroupping"
+                    Data=@SalesByProduct
+                    IsLoading=@IsLoading
+                    AllowFiltering="true"
+                    AllowPaging="true"
+                    AllowSorting="true"
+                    PageSize="10">
+        <Columns>
+            <RadzenDataGridColumn Property="IdProductos" Title="Id producto" />
+            <RadzenDataGridColumn Property="Producto.Titulo" Title="Nombre" />
+            <RadzenDataGridColumn Title="Total">
+                <Template Context="context">
+                    <RadzenText Text="@CurrencyFormat(context.Total ?? 0)" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+</RadzenStack>
+
+@code {
+    protected bool IsLoading;
+    private IEnumerable<SalesByProductGroupping> SalesByProduct { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadSalesByProduct();
+    }
+
+    protected async Task LoadSalesByProduct()
+    {
+        IsLoading = true;
+        var salesByProduct = await ODataService.GetSalesProductAsync();
+        SalesByProduct = salesByProduct
+            .ToList()
+            .GroupBy(x => x.Idproductos)
+            .Select(g => new SalesByProductGroupping()
+                {
+                    IdProductos = g.Key,
+                    Total = g.Sum(x =>
+                        x.CantidadVendida * (g.FirstOrDefault()?.Producto?.PrecioUnitario ?? 0)
+                    ),
+                    Producto = g.FirstOrDefault()?.Producto
+                }
+            );
+        IsLoading = false;
+    }
+    protected string CurrencyFormat(decimal value)
+    {
+        return value.ToString("C2", CultureInfo.CreateSpecificCulture("es-MX"));
+    }
+}
